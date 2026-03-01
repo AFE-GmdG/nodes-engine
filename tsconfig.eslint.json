@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true, // Allow JavaScript files to be compiled - Necessary for the eslint.config.js file
+  },
+  "include": [
+    "packages/spa/src",
+    "packages/spa/vite.config.ts",
+    "packages/nodes-engine/src",
+    "eslint.config.js",
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+  ],
+}

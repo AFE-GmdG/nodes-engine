@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+
+  "compilerOptions": {
+    "outDir": "dist",
+
+    "baseUrl": ".",
+    "paths": {
+      "@afegmdg/nodes-engine": ["../nodes-engine/src"],
+      "@afegmdg/nodes-engine/*": ["../nodes-engine/src/*"],
+    },
+  },
+
+  "include": [
+    "src",
+    "../nodes-engine/src",
+  ],
+}

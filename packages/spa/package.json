@@ -1,0 +1,21 @@
+{
+  "name": "@afegmdg/spa",
+  "description": "SPA Testanwendung",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "predev": "rimraf dist",
+    "dev": "vite",
+    "prebuild": "rimraf dist",
+    "build": "vite build",
+    "errorcheck": "tsc --noEmit",
+    "lint": "eslint",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@afegmdg/nodes-engine": "0.2.0"
+  },
+  "devDependencies": {
+  }
+}
