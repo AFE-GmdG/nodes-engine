@@ -113,6 +113,8 @@ Die Datei `nodes-engine.code-workspace` enthält:
 
 Dieses Projekt ist in einem sehr frühen Entwicklungsstadium. Die API und interne Struktur können sich drastisch ändern. Verwende diese Engine **nicht** für Production-Projekte.
 
+Und ja: Ich nutze **deutschsprachige Kommentare und Dokumentation**. Ich möchte mir nicht bei jedem Satz überlegen, wie man das auf Englisch formuliert. Das Projekt ist in erster Linie für mich selbst, um neue Ideen zu erforschen. Wenn es anderen Entwicklern hilft, ist das großartig - interessiert mich aber nur mässig.
+
 ## 📄 Lizenz
 
 Siehe [LICENSE](./LICENSE) für Details.

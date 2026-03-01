@@ -1,3 +1,7 @@
+// import type ist hier nötig, um zirkuläre Abhängigkeiten zwischen BaseNode und RootNode zu vermeiden.
+import type RootNode from "./rootNode";
+
+import FrameContext from "../core/frameContext";
 import Guid from "../core/guid";
 
 export type BaseNodeConfig = {
@@ -6,6 +10,19 @@ export type BaseNodeConfig = {
   name?: string;
 };
 
+/**
+ * Die Basisklasse für alle Nodes im Engine- und Application-Bereich.
+ *
+ * Jeder Node benötigt einen Typ, eine ID und einen Namen.
+ * Zusätzlich kann jeder Node genau einen Parent und beliebig viele Kinder haben,
+ * wodurch eine Hierarchie von Nodes entsteht.
+ *
+ * Lebenszyklus: Ein Node wird meist indirekt über die NodeFactory erstellt,
+ * wobei bei vorhandenem Parent der Node automatisch als Kind dieses Parents
+ * registriert wird.
+ * Anschließend muss die `initializeTree`-Methode aufgerufen werden, um den Node
+ * und alle seine Nachkommen zu initialisieren.
+ */
 abstract class BaseNode {
   readonly #type: string;
   get type(): string { return this.#type; }
@@ -29,6 +46,28 @@ abstract class BaseNode {
 
   #children: BaseNode[];
   get children(): BaseNode[] { return this.#children; }
+
+  get path(): string {
+    return this.parent
+      ? this.parent.path === "/"
+        ? `/${this.name}`
+        : `${this.parent.path}/${this.name}`
+      : `/${this.name}`;
+  }
+
+  get root(): RootNode | undefined {
+    let current: BaseNode | undefined = this;
+    while (current) {
+      // Ich kann hier nicht `instanceof RootNode` verwenden,
+      // da dies mit einem type import nicht möglich ist und zu zirkulären Abhängigkeiten führen würde.
+      // Die Type-Eigenschaft ist daher der pragmatische Weg, um den RootNode zu identifizieren.
+      if (current.type === "ROOT_NODE") {
+        return current as RootNode;
+      }
+      current = current.parent;
+    }
+    return undefined;
+  }
 
   constructor({ type, id, name }: BaseNodeConfig, parent?: BaseNode) {
     this.#type = type;
@@ -56,9 +95,17 @@ abstract class BaseNode {
    * - Node (2)
    * - Node (3)
    * - ...
+   *
+   * Namen dürfen die folgenden Zeichen nicht enthalten:
+   * - . (Punkt): Wird für relative Pfade in der Node-Hierarchie verwendet. (./ und ../)
+   * - / (Slash): Wird als Trenner für Pfadsegmente und als Root-Indicator (/) in der Node-Hierarchie verwendet.
    * @param name Der Basisname für diesen Node.
    */
   setName(name: string) {
+    if (name.includes(".") || name.includes("/")) {
+      throw new Error("Node names cannot contain '.' or '/' characters.");
+    }
+
     this.#baseName = name;
     const siblingsWithSameName = this.parent?.children.filter(
       (sibling) => sibling !== this && sibling.#baseName === name,
@@ -180,12 +227,172 @@ abstract class BaseNode {
     this.#children.splice(index, 1);
   }
 
+  // --- Methoden zum finden von Nodes ---
+
+  /**
+   * Sucht in den Vorfahren dieses Nodes nach einem Node mit dem übergebenen Typ und gibt diesen zurück.
+   * Die Suche beginnt beim direkten Elternteil und setzt sich dann weiter nach oben fort,
+   * bis ein passender Node gefunden wird oder die Wurzel des Baums erreicht ist.
+   * @param type Der gesuchte Node-Typ
+   */
+  findAncestorByType(type: string) {
+    let current = this.#parent;
+    while (current) {
+      if (current.type === type) {
+        return current;
+      }
+      current = current.#parent;
+    }
+    return undefined;
+  }
+
+  /**
+   * Sucht in den Vorfahren dieses Nodes nach einem Node mit einem der übergebenen Typen und gibt diesen zurück.
+   * Die Suche beginnt beim direkten Elternteil und setzt sich dann weiter nach oben fort,
+   * bis ein passender Node gefunden wird oder die Wurzel des Baums erreicht ist.
+   * @param types Die gesuchten Node-Typen. Es wird der erste Vorfahre zurückgegeben, dessen Typ mit einem der übergebenen Typen übereinstimmt.
+   */
+  findAncestorByTypes(...types: string[]) {
+    let current = this.#parent;
+    while (current) {
+      if (types.includes(current.type)) {
+        return current;
+      }
+      current = current.#parent;
+    }
+    return undefined;
+  }
+
+  /**
+   * Sucht in den direkten Kindern dieses Nodes nach allen Nodes mit dem übergebenen Typ.
+   * @param type Der gesuchte Node-Typ
+   * @param recursive Wenn true, werden auch alle Nachkommen durchsucht
+   * @returns Ein Array mit allen gefundenen Nodes, die den übergebenen Typ haben.
+   * Wird kein passender Node gefunden, wird ein leeres Array zurückgegeben.
+   */
+  findAllChildrenByType(type: string, recursive: boolean = false): BaseNode[] {
+    const result: BaseNode[] = [];
+    for (const child of this.#children) {
+      if (child.type === type) {
+        result.push(child);
+      }
+      if (recursive) {
+        result.push(...child.findAllChildrenByType(type, true));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Sucht in der Hierarchie dieses Nodes nach einem Node mit dem übergebenen Pfad und gibt diesen zurück.
+   * - Der Pfad kann absolut (/Path/to/Node) oder relativ sein (./Path/to/Node oder ../SiblingNode).
+   * - Der Pfad darf . und .. Segmente an beliebigen Stellen im Pfad enthalten.
+   * - Es können leere Segmente (//) im Pfad enthalten sein, diese werden ignoriert.
+   * @param path Absoluter oder relativer Pfad zu einem Node in der Hierarchie.
+   * @returns Der Node, der dem übergebenen Pfad entspricht, oder undefined, wenn kein solcher Node gefunden wurde. (kein throw)
+   */
+  findNodeByPath(path: string): BaseNode | undefined {
+    // 1. Prüfen, ob der Pfad absolut ist
+    const isAbsolutePath = path.startsWith("/");
+
+    // 2. Startpunkt bestimmen: Absolute Pfade beginnen immer bei der Wurzel, relative Pfade beginnen bei diesem Node
+    const currentNode: BaseNode | undefined = isAbsolutePath ? this.root : this;
+
+    if (!currentNode) {
+      return undefined; // Kein Startpunkt gefunden (z.B. this ist nicht im Baum und der Pfad ist absolut)
+    }
+
+    // 3. In Segmente zerlegen und leere Teile (z.B. durch // oder führende/folgende Slashes) entfernen
+    const segments = path.split("/").filter(s => s.length > 0);
+
+    // Wenn der Pfad nur "/" war, ist die Liste leer und wir geben direkt den Root zurück
+    if (isAbsolutePath && segments.length === 0) {
+      return currentNode;
+    }
+
+    return this.#resolvePath(currentNode, segments);
+  }
+
+  /**
+   * Traversiert den Baum basierend auf einer Liste von Pfad-Segmenten.
+   */
+  #resolvePath(startNode: BaseNode, segments: string[]) {
+    let currentNode: BaseNode | undefined = startNode;
+
+    for (const segment of segments) {
+      if (!currentNode) {
+        // Wenn currentNode zu irgendeinem Zeitpunkt undefined wird, bedeutet dies,
+        // dass der Pfad ungültig ist (z.B. weil ein Segment nicht gefunden wurde oder ein Root-Break aufgetreten ist).
+        return undefined;
+      }
+
+      if (segment === ".") {
+        continue; // Bleibe beim aktuellen Node
+      }
+
+      if (segment === "..") {
+        currentNode = currentNode.parent; // Navigiere zum Elternknoten
+        continue;
+      }
+
+      // Suche das Kind, dessen Name dem Segment entspricht
+      // Achtung: #nameId muss korrekt berücksichtigt werden, es wird immer nach dem vollen Namen gesucht.
+      currentNode = currentNode.children.find(child => child.name === segment);
+    }
+
+    return currentNode;
+  }
+
   // --- Methoden für Node Lifecycle ---
+
+  /**
+   * Wird aufgerufen, wenn dieser Node initialisiert wird.
+   * Diese Methode ist ein leerer Stub und kann von Unterklassen überschrieben werden.
+   *
+   * `onInitialize` wird als erster Schritt im Initialisierungsprozess eines Nodes aufgerufen,
+   * bevor die Komponenten und Kinder initialisiert werden.
+   */
+  protected onInitialize(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Wird aufgerufen, nachdem dieser Node und alle seine Nachkommen initialisiert wurden.
+   * Diese Methode ist ein leerer Stub und kann von Unterklassen überschrieben werden.
+   *
+   * `onInitialized` wird als letzter Schritt im Initialisierungsprozess eines Nodes aufgerufen,
+   * nachdem alle Komponenten und Kinder initialisiert wurden.
+   * Diese Methode hat zugriff auf alle initialisierten Kinder und Komponenten dieses Nodes.
+   * Eltern sind zu diesem Zeitpunkt noch nicht garantiert initialisiert.
+   */
+  protected onInitialized(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  /**
+   * Wird in jedem Frame aufgerufen, um diesen Node zu aktualisieren.
+   * Diese Methode ist ein leerer Stub und kann von Unterklassen überschrieben werden.
+   * @param frameContext  Der aktuelle Frame-Kontext
+   * @returns false, wenn die Game-Loop beendet werden soll, andernfalls true.
+   */
+  protected onUpdate(_frameContext: Readonly<FrameContext>): boolean {
+    return true;
+  }
+
+  /**
+   * Wird aufgerufen, wenn dieser Node zerstört wird.
+   * Diese Methode ist ein leerer Stub und kann von Unterklassen überschrieben werden.
+   */
+  protected onDestroy(): void {
+  }
 
   /**
    * Initialisiert diesen Node und alle seine Nachkommen rekursiv.
    */
   async initializeTree() {
+    // Initialisiere diesen Node
+    await this.onInitialize();
+
     // TODO: ECS initialization
     // for (const component of this.#components) {
     //   await component.initialize(this);
@@ -195,6 +402,51 @@ abstract class BaseNode {
     for (const child of this.#children) {
       await child.initializeTree();
     }
+
+    // Rufe onInitialized auf, nachdem alle Kinder initialisiert wurden
+    await this.onInitialized();
+  }
+
+  /**
+   * Aktualisiert diesen Node und alle seine Nachkommen rekursiv.
+   * @param frameContext Der aktuelle Frame-Kontext
+   * @returns false, wenn die Game-Loop beendet werden soll, andernfalls true.
+   */
+  updateTree(frameContext: Readonly<FrameContext>): boolean {
+    const shouldContinue = this.onUpdate(frameContext);
+
+    // Alle Kinder updaten – auch wenn eines false zurückgibt
+    let childrenContinue = true;
+    for (const child of this.#children) {
+      if (!child.updateTree(frameContext)) {
+        childrenContinue = false;
+      }
+    }
+
+    return shouldContinue && childrenContinue;
+  }
+
+  /**
+   * Zerstört diesen Node und alle seine Nachkommen rekursiv.
+   */
+  destroyTree() {
+    // Zerstöre alle Kinder rekursiv
+    for (const child of this.#children) {
+      child.destroyTree();
+      // Trenne das Kind von diesem Node
+      child.#parent = undefined;
+    }
+    // Leere die Kinderliste.
+    // Damit werden alle Referenzen zu den Kindern entfernt, der GC kann sie nun aufräumen.
+    this.#children.length = 0;
+
+    // TODO: ECS destruction
+    // for (const component of this.#components) {
+    //   component.destroy(this);
+    // }
+
+    // Zerstöre diesen Node
+    this.onDestroy();
   }
 
   // --- Hilfs- und Debugmethoden ---

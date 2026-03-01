@@ -22,34 +22,42 @@ import engineNodeMap, { EngineNodeMap } from "./engineNodeMap";
  * @example
  * **Nutzung in der Applikation:**
  * ```ts
+ * type PlayerNodeConfig = BaseNodeConfig & {
+ *   health: number;
+ * };
+ *
  * class PlayerNode extends BaseNode {
  *   #health: number;
  *
- *   constructor(config: BaseNodeConfig & { health: number }, parent?: BaseNode) {
+ *   constructor(config: PlayerNodeConfig, parent?: BaseNode) {
  *     super(config, parent);
- *     // ...
  *     this.#health = config.health;
  *   }
  * }
  *
- * class MyApp extends Application {
- *   async initialize(factoryFactory: typeof createNodeFactory) {
- *     const factory = factoryFactory({
- *       player: PlayerNode,
- *     });
+ * const appNodeMap = {
+ *   player: PlayerNode,
+ * };
+ *
+ * const app = new class extends Application<typeof appNodeMap> {
+ *   protected getAppNodeMap() {
+ *     return appNodeMap;
+ *   }
+ *
+ *   async initializeViewport(): Promise<ViewportNode> {
+ *     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
  *
  *     // Typesicher:
- *     const viewport = factory({ type: "viewport", canvasOrTexture: someCanvas }); // Engine-Node
- *     const player = factory({ type: "player", health: 100 }); // Applikation-Node
+ *     const viewport = this.nodeFactory({ type: "viewport", canvasOrTexture: canvas }); // Engine-Node
+ *     const player = this.nodeFactory({ type: "player", health: 100 }, viewport); // Applikation-Node
  *     // Compile-Error:
- *     const player2 = factory({ type: "player", damage: 10 });
+ *     const player2 = this.nodeFactory({ type: "player", damage: 10 }, viewport);
  *
- *     return {
- *       viewport,
- *       player,
- *     };
+ *     return viewport;
  *   }
- * }
+ * }();
+ *
+ * await app.run();
  * ```
  */
 function createNodeFactory<
