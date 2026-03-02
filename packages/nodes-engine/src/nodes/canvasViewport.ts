@@ -183,9 +183,6 @@ class CanvasViewportNode extends ViewportNode {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    // Der Node-Name ist nicht unveränderlich. Außerdem könnten mehrere CanvasViewportNodes
-    // mit dem selben Namen existieren. Daher ist es wichtig, die GUID des Nodes
-    // für den Ressourcennamen zu verwenden.
     this.#primaryColorTexture = this.rendererApi.textures.set(
       this.#colorResourceName,
       (label) => this.rendererApi.gpuDevice.createTexture({

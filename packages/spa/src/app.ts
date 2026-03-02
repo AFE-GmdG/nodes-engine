@@ -1,5 +1,7 @@
 import Application from "@afegmdg/nodes-engine/core/application";
 
+import Vector3 from "@afegmdg/nodes-engine/math/vector3";
+
 import BaseNode, { type BaseNodeConfig } from "@afegmdg/nodes-engine/nodes/baseNode";
 import ViewportNode from "@afegmdg/nodes-engine/nodes/viewport";
 
@@ -38,7 +40,17 @@ const app = new class extends Application<typeof appNodeMap> {
       primaryColorFormat: "rgba32float",
       primaryDepthStencilFormat: "depth16unorm",
     });
-    this.nodeFactory({ type: "player", health: 100 }, viewportNode);
+
+    this.nodeFactory({
+      type: "player",
+      health: 100,
+    }, viewportNode);
+
+    this.nodeFactory({
+      type: "3D camera",
+      name: "MainCamera",
+      position: new Vector3(1.5, 0, 15),
+    }, viewportNode);
 
     return viewportNode;
   }

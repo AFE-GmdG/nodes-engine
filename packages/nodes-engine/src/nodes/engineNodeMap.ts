@@ -1,4 +1,5 @@
 import CanvasViewport from "./canvasViewport";
+import Camera from "./camera";
 
 // Der RootNode als Wurzel aller Nodes ist kein Node-Type, welcher in dieser Map
 // definiert werden darf, da von diesem Typ keine Instanzen abseits des
@@ -12,10 +13,12 @@ import CanvasViewport from "./canvasViewport";
 
 export type EngineNodeMap = {
   canvasViewport: typeof CanvasViewport;
+  "3D camera": typeof Camera;
 };
 
 const engineNodeMap: EngineNodeMap = {
   canvasViewport: CanvasViewport,
+  "3D camera": Camera,
 };
 
 export default engineNodeMap;
