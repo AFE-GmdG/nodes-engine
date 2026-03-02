@@ -4,6 +4,7 @@ import BaseNode from "../nodes/baseNode";
 import createNodeFactory from "../nodes/factory";
 import RootNode from "../nodes/rootNode";
 import ViewportNode from "../nodes/viewport";
+import { unknownToError } from "./utils";
 
 // --- Applikations-Klasse ---
 abstract class Application<
@@ -42,18 +43,22 @@ abstract class Application<
    * der Viewport-Node erstellt und der gesamte Node-Baum initialisiert wird.
    */
   async run() {
-    const appNodeMap = this.getAppNodeMap();
-    this.#nodeFactory = createNodeFactory(appNodeMap);
+    try {
+      const appNodeMap = this.getAppNodeMap();
+      this.#nodeFactory = createNodeFactory(appNodeMap);
 
-    const viewportNode = await this.initializeViewport();
+      const viewportNode = await this.initializeViewport();
 
-    // Füge den Viewport-Node als Kind des Root-Nodes hinzu
-    this.#rootNode.addChild(viewportNode);
+      // Füge den Viewport-Node als Kind des Root-Nodes hinzu
+      this.#rootNode.addChild(viewportNode);
 
-    // Initialisiere den gesamten Node-Baum
-    await this.#rootNode.initializeTree();
+      // Initialisiere den gesamten Node-Baum
+      await this.#rootNode.initializeTree();
+    } catch (ex) {
+      this.#handleError(unknownToError(ex));
+    }
 
-    const { promise: gameLoopPromise, resolve } = Promise.withResolvers<void>();
+    const { promise: gameLoopPromise, resolve, reject } = Promise.withResolvers<void>();
 
     // TODO: Game-Loop
     const last100DeltaTimes: number[] = [];
@@ -91,11 +96,16 @@ abstract class Application<
       lastFrameTime = time;
       frame++;
 
-      // Rekursives Update des gesamten Node-Baums starten
-      const shouldContinue = this.#rootNode.updateTree(frameContext);
+      try {
+        // Rekursives Update des gesamten Node-Baums starten
+        const shouldContinue = this.#rootNode.updateTree(frameContext);
 
-      if (shouldContinue) {
-        window.requestAnimationFrame(gameLoop);
+        if (shouldContinue) {
+          window.requestAnimationFrame(gameLoop);
+          return;
+        }
+      } catch (ex) {
+        reject(ex);
         return;
       }
 
@@ -103,10 +113,77 @@ abstract class Application<
     };
 
     window.requestAnimationFrame(gameLoop);
-    await gameLoopPromise;
 
-    // Aufräumen
-    this.#rootNode.destroyTree();
+    try {
+      await gameLoopPromise;
+    } catch (ex) {
+      this.#handleError(unknownToError(ex));
+    } finally {
+      // Aufräumen
+      this.#rootNode.destroyTree();
+    }
+  }
+
+  #handleError(error: Error) {
+    // Erzeuge einen Dialog.
+    // Hänge die Fehlermeldung an und biete die Möglichkeit, die Seite neu zu laden.
+    console.error(error);
+
+    const newStyles = document.createElement("style");
+    newStyles.textContent = `
+      dialog {
+        padding: 2rem 4rem;
+      }
+
+      dialog > h2 {
+        margin-block: 1rem;
+      }
+
+      dialog > p {
+        margin-block: 0.25rem;
+      }
+
+      dialog > .actions {
+        margin-block: 2rem 1rem;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+
+      dialog > .actions > button {
+        padding: 0.5rem 1rem;
+      }
+    `;
+    const dialog = document.createElement("dialog");
+    const title = document.createElement("h2");
+    const message1 = document.createElement("p");
+    const message2 = document.createElement("p");
+    const actionsDiv = document.createElement("div");
+    const reloadButton = document.createElement("button");
+
+    title.textContent = "A Critical Error Occurred";
+    message1.textContent = "The application has encountered a critical error and needs to stop.";
+    message2.textContent = `Error details: ${error.message}`;
+    actionsDiv.className = "actions";
+    reloadButton.textContent = "Reload Application";
+
+    actionsDiv.appendChild(reloadButton);
+
+    dialog.appendChild(title);
+    dialog.appendChild(message1);
+    dialog.appendChild(message2);
+    dialog.appendChild(actionsDiv);
+
+    reloadButton.onclick = () => {
+      dialog.close();
+      window.location.reload();
+    };
+
+    document.head.appendChild(newStyles);
+    document.body.appendChild(dialog);
+
+    dialog.showModal();
   }
 }
 

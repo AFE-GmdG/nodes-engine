@@ -31,7 +31,13 @@ const app = new class extends Application<typeof appNodeMap> {
   async initializeViewport(): Promise<ViewportNode> {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 
-    const viewportNode = this.nodeFactory({ type: "viewport", canvasOrTexture: canvas });
+    const viewportNode = this.nodeFactory({
+      type: "canvasViewport",
+      name: "MainViewport",
+      canvas,
+      primaryColorFormat: "rgba32float",
+      primaryDepthStencilFormat: "depth16unorm",
+    });
     this.nodeFactory({ type: "player", health: 100 }, viewportNode);
 
     return viewportNode;
