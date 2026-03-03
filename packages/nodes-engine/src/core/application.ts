@@ -101,6 +101,27 @@ abstract class Application<
         const shouldContinue = this.#rootNode.updateTree(frameContext);
 
         if (shouldContinue) {
+          // Aktiven Frame erstellen:
+          // - Alle Viewport-Nodes sammeln: Aktuell gibt es nur einen Viewport,
+          //   welcher von initialisiertViewport() erstellt wurde.
+          //   Dieser könnte jedoch ausgetauscht worden sein oder es gibt weitere Viewports
+          //   (z.B. Qube-Environments) unterhalb, welche zuerst gerendert werden müssen.
+          //   - Caching?
+          // - Je Viewport die nötigen Resourcen für den Frame sammeln
+          //   - Meshes => AABB-Check: Ist das Mesh im Frustum? Wenn nein, dann überspringen.
+          //   - Materialien
+          //   - Shader
+          //   - Texturen
+          // - gleiche Mesh/Material-Kombinationen gruppieren
+          //   - State Switches minimieren
+          //   - instanced rendering, wenn möglich
+          //     - Es müsste readonly Storagebuffers geben, welche je Instanz die nötigen Daten
+          //       bereitstellt, z.B. Indices auf den Matrix-Buffer für Model, View und Projection
+          //       Matizen
+          //     - Shader müssen dafür ausgelegt sein, sich so gruppieren zu können
+          // - Render-Pipeline pro Viewport ausführen
+
+          // Nächsten Frame planen
           window.requestAnimationFrame(gameLoop);
           return;
         }

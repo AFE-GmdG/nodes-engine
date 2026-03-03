@@ -1,5 +1,3 @@
-// S:\Git\descent\editor\node_modules\three\src\math\Matrix4.js
-
 import Quaternion from "./quaternion";
 import Vector3 from "./vector3";
 
@@ -61,380 +59,168 @@ export type Matrix4Tuple = [
  * transpose of any matrices outlined here to make sense of the calculations.
  */
 class Matrix4 {
-  #elements: Float32Array;
+  /**
+   * Der Float32Array, der die Elemente der Matrix enthält.
+   * Kann auch extern und mit Offset übergeben werden, um mehrere
+   * Matrizen in einem großen Speicherbereich zu verwalten.
+   */
+  #data: Float32Array;
+  get data() { return this.#data; }
 
-  get elements() { return this.#elements; }
+  /** Ein optionales Label für Debugging-Zwecke, z.B. um die Matrix in GPU-Buffer-Logs zu identifizieren. */
+  #label: string;
+  get label() { return this.#label; }
+  set label(value: string) { this.#label = value; }
 
-  get m11() { return this.#elements[0]; }
-  get m12() { return this.#elements[4]; }
-  get m13() { return this.#elements[8]; }
-  get m14() { return this.#elements[12]; }
+  // Getter angepasst an Column-Major interne Speicherung
+  get m11() { return this.#data[0]; }
+  get m21() { return this.#data[1]; }
+  get m31() { return this.#data[2]; }
+  get m41() { return this.#data[3]; }
 
-  get m21() { return this.#elements[1]; }
-  get m22() { return this.#elements[5]; }
-  get m23() { return this.#elements[9]; }
-  get m24() { return this.#elements[13]; }
+  get m12() { return this.#data[4]; }
+  get m22() { return this.#data[5]; }
+  get m32() { return this.#data[6]; }
+  get m42() { return this.#data[7]; }
 
-  get m31() { return this.#elements[2]; }
-  get m32() { return this.#elements[6]; }
-  get m33() { return this.#elements[10]; }
-  get m34() { return this.#elements[14]; }
+  get m13() { return this.#data[8]; }
+  get m23() { return this.#data[9]; }
+  get m33() { return this.#data[10]; }
+  get m43() { return this.#data[11]; }
 
-  get m41() { return this.#elements[3]; }
-  get m42() { return this.#elements[7]; }
-  get m43() { return this.#elements[11]; }
-  get m44() { return this.#elements[15]; }
+  get m14() { return this.#data[12]; }
+  get m24() { return this.#data[13]; }
+  get m34() { return this.#data[14]; }
+  get m44() { return this.#data[15]; }
 
-  constructor();
-  constructor(
-    n11: number, n12: number, n13: number, n14: number,
-    n21: number, n22: number, n23: number, n24: number,
-    n31: number, n32: number, n33: number, n34: number,
-    n41: number, n42: number, n43: number, n44: number,
-  );
-  constructor(
-    n11?: number, n12?: number, n13?: number, n14?: number,
-    n21?: number, n22?: number, n23?: number, n24?: number,
-    n31?: number, n32?: number, n33?: number, n34?: number,
-    n41?: number, n42?: number, n43?: number, n44?: number,
-  ) {
-    this.#elements = new Float32Array([
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1,
-    ]);
+  // Setter angepasst an Column-Major interne Speicherung
+  set m11(value: number) { this.#data[0] = value; }
+  set m21(value: number) { this.#data[1] = value; }
+  set m31(value: number) { this.#data[2] = value; }
+  set m41(value: number) { this.#data[3] = value; }
 
-    if (n11 !== undefined) {
-      this.#elements.set([
-        n11, n21!, n31!, n41!,
-        n12!, n22!, n32!, n42!,
-        n13!, n23!, n33!, n43!,
-        n14!, n24!, n34!, n44!,
-      ]);
-    }
-  }
+  set m12(value: number) { this.#data[4] = value; }
+  set m22(value: number) { this.#data[5] = value; }
+  set m32(value: number) { this.#data[6] = value; }
+  set m42(value: number) { this.#data[7] = value; }
 
+  set m13(value: number) { this.#data[8] = value; }
+  set m23(value: number) { this.#data[9] = value; }
+  set m33(value: number) { this.#data[10] = value; }
+  set m43(value: number) { this.#data[11] = value; }
+
+  set m14(value: number) { this.#data[12] = value; }
+  set m24(value: number) { this.#data[13] = value; }
+  set m34(value: number) { this.#data[14] = value; }
+  set m44(value: number) { this.#data[15] = value; }
+
+  /**
+   * Setzt alle Elemente der Matrix auf die angegebenen Werte. \
+   * Die Werte werden in row-major Reihenfolge übergeben, um die Lesbarkeit zu verbessern. \
+   * Intern werden sie jedoch in column-major Reihenfolge gespeichert, um mit WebGPU kompatibel zu sein.
+   */
   set(
     n11: number, n12: number, n13: number, n14: number,
     n21: number, n22: number, n23: number, n24: number,
     n31: number, n32: number, n33: number, n34: number,
     n41: number, n42: number, n43: number, n44: number,
   ): Matrix4 {
-    this.#elements.set([
+    this.#data.set([
       n11, n21, n31, n41,
       n12, n22, n32, n42,
       n13, n23, n33, n43,
       n14, n24, n34, n44,
     ]);
-
     return this;
-  }
-
-  identity(): Matrix4 {
-    this.#elements.set([
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, 0, 1,
-    ]);
-
-    return this;
-  }
-
-  clone(): Matrix4 {
-    return new Matrix4().fromArray(this.#elements);
-  }
-
-  copy(m: Matrix4): Matrix4 {
-    this.#elements.set(m.#elements);
-
-    return this;
-  }
-
-  copyPosition(m: Matrix4): Matrix4 {
-    this.#elements[12] = m.#elements[12];
-    this.#elements[13] = m.#elements[13];
-    this.#elements[14] = m.#elements[14];
-
-    return this;
-  }
-
-  multiply(m: Matrix4): Matrix4 {
-    return this.multiplyMatrices(this, m);
-  }
-
-  premultiply(m: Matrix4): Matrix4 {
-    return this.multiplyMatrices(m, this);
-  }
-
-  multiplyMatrices(a: Matrix4, b: Matrix4): Matrix4 {
-    const a11 = a.#elements[0], a12 = a.#elements[4], a13 = a.#elements[8], a14 = a.#elements[12];
-    const a21 = a.#elements[1], a22 = a.#elements[5], a23 = a.#elements[9], a24 = a.#elements[13];
-    const a31 = a.#elements[2], a32 = a.#elements[6], a33 = a.#elements[10], a34 = a.#elements[14];
-    const a41 = a.#elements[3], a42 = a.#elements[7], a43 = a.#elements[11], a44 = a.#elements[15];
-
-    const b11 = b.#elements[0], b12 = b.#elements[4], b13 = b.#elements[8], b14 = b.#elements[12];
-    const b21 = b.#elements[1], b22 = b.#elements[5], b23 = b.#elements[9], b24 = b.#elements[13];
-    const b31 = b.#elements[2], b32 = b.#elements[6], b33 = b.#elements[10], b34 = b.#elements[14];
-    const b41 = b.#elements[3], b42 = b.#elements[7], b43 = b.#elements[11], b44 = b.#elements[15];
-
-    this.#elements[0] = a11 * b11 + a12 * b21 + a13 * b31 + a14 * b41;
-    this.#elements[4] = a11 * b12 + a12 * b22 + a13 * b32 + a14 * b42;
-    this.#elements[8] = a11 * b13 + a12 * b23 + a13 * b33 + a14 * b43;
-    this.#elements[12] = a11 * b14 + a12 * b24 + a13 * b34 + a14 * b44;
-
-    this.#elements[1] = a21 * b11 + a22 * b21 + a23 * b31 + a24 * b41;
-    this.#elements[5] = a21 * b12 + a22 * b22 + a23 * b32 + a24 * b42;
-    this.#elements[9] = a21 * b13 + a22 * b23 + a23 * b33 + a24 * b43;
-    this.#elements[13] = a21 * b14 + a22 * b24 + a23 * b34 + a24 * b44;
-
-    this.#elements[2] = a31 * b11 + a32 * b21 + a33 * b31 + a34 * b41;
-    this.#elements[6] = a31 * b12 + a32 * b22 + a33 * b32 + a34 * b42;
-    this.#elements[10] = a31 * b13 + a32 * b23 + a33 * b33 + a34 * b43;
-    this.#elements[14] = a31 * b14 + a32 * b24 + a33 * b34 + a34 * b44;
-
-    this.#elements[3] = a41 * b11 + a42 * b21 + a43 * b31 + a44 * b41;
-    this.#elements[7] = a41 * b12 + a42 * b22 + a43 * b32 + a44 * b42;
-    this.#elements[11] = a41 * b13 + a42 * b23 + a43 * b33 + a44 * b43;
-    this.#elements[15] = a41 * b14 + a42 * b24 + a43 * b34 + a44 * b44;
-
-    return this;
-  }
-
-  multiplyScalar(s: number): Matrix4 {
-    this.#elements[0] *= s; this.#elements[4] *= s; this.#elements[8] *= s; this.#elements[12] *= s;
-    this.#elements[1] *= s; this.#elements[5] *= s; this.#elements[9] *= s; this.#elements[13] *= s;
-    this.#elements[2] *= s; this.#elements[6] *= s; this.#elements[10] *= s; this.#elements[14] *= s;
-    this.#elements[3] *= s; this.#elements[7] *= s; this.#elements[11] *= s; this.#elements[15] *= s;
-
-    return this;
-  }
-
-  determinant(): number {
-    const n11 = this.#elements[0], n12 = this.#elements[4], n13 = this.#elements[8], n14 = this.#elements[12];
-    const n21 = this.#elements[1], n22 = this.#elements[5], n23 = this.#elements[9], n24 = this.#elements[13];
-    const n31 = this.#elements[2], n32 = this.#elements[6], n33 = this.#elements[10], n34 = this.#elements[14];
-    const n41 = this.#elements[3], n42 = this.#elements[7], n43 = this.#elements[11], n44 = this.#elements[15];
-
-    return (
-      n41 * (
-        n14 * n23 * n32
-        - n13 * n24 * n32
-        - n14 * n22 * n33
-        + n12 * n24 * n33
-        + n13 * n22 * n34
-        - n12 * n23 * n34
-      ) +
-      n42 * (
-        n11 * n23 * n34
-        - n11 * n24 * n33
-        + n14 * n21 * n33
-        - n13 * n21 * n34
-        + n13 * n24 * n31
-        - n14 * n23 * n31
-      ) +
-      n43 * (
-        n11 * n24 * n32
-        - n11 * n22 * n34
-        - n14 * n21 * n32
-        + n12 * n21 * n34
-        + n14 * n22 * n31
-        - n12 * n24 * n31
-      ) +
-      n44 * (
-        -n13 * n22 * n31
-        - n11 * n23 * n32
-        + n11 * n22 * n33
-        + n13 * n21 * n32
-        - n12 * n21 * n33
-        + n12 * n23 * n31
-      )
-    );
-  }
-
-  transpose(): Matrix4 {
-    let tmp: number;
-    tmp = this.#elements[1]; this.#elements[1] = this.#elements[4]; this.#elements[4] = tmp;
-    tmp = this.#elements[2]; this.#elements[2] = this.#elements[8]; this.#elements[8] = tmp;
-    tmp = this.#elements[6]; this.#elements[6] = this.#elements[9]; this.#elements[9] = tmp;
-
-    tmp = this.#elements[3]; this.#elements[3] = this.#elements[12]; this.#elements[12] = tmp;
-    tmp = this.#elements[7]; this.#elements[7] = this.#elements[13]; this.#elements[13] = tmp;
-    tmp = this.#elements[11]; this.#elements[11] = this.#elements[14]; this.#elements[14] = tmp;
-
-    return this;
-  }
-
-  compose(position: Vector3, quaternion: Quaternion, scale: Vector3): Matrix4 {
-    const x = quaternion.x, y = quaternion.y, z = quaternion.z, w = quaternion.w;
-    const x2 = x + x, y2 = y + y, z2 = z + z;
-    const xx = x * x2, xy = x * y2, xz = x * z2;
-    const yy = y * y2, yz = y * z2, zz = z * z2;
-    const wx = w * x2, wy = w * y2, wz = w * z2;
-
-    const sx = scale.x, sy = scale.y, sz = scale.z;
-
-    this.#elements[0x0] = (1 - (yy + zz)) * sx;
-    this.#elements[0x1] = (xy - wz) * sy;
-    this.#elements[0x2] = (xz + wy) * sz;
-    this.#elements[0x3] = position.x;
-
-    this.#elements[0x4] = (xy + wz) * sx;
-    this.#elements[0x5] = (1 - (xx + zz)) * sy;
-    this.#elements[0x6] = (yz - wx) * sz;
-    this.#elements[0x7] = position.y;
-
-    this.#elements[0x8] = (xz - wy) * sx;
-    this.#elements[0x9] = (yz + wx) * sy;
-    this.#elements[0xa] = (1 - (xx + yy)) * sz;
-    this.#elements[0xb] = position.z;
-
-    this.#elements[0xc] = 0;
-    this.#elements[0xd] = 0;
-    this.#elements[0xe] = 0;
-    this.#elements[0xf] = 1;
-
-    return this;
-  }
-
-  equals(matrix: Matrix4): boolean {
-    for (let i = 0; i < 16; i++) {
-      if (matrix.#elements[i] !== this.#elements[i]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  fromArray(array: ArrayLike<number>, offset = 0): Matrix4 {
-    for (let i = 0; i < 16; i++) {
-      this.#elements[i] = array[i + offset];
-    }
-
-    return this;
-  }
-
-  toArray(array: number[] = [], offset = 0): number[] {
-    array[offset] = this.#elements[0];
-    array[offset + 1] = this.#elements[1];
-    array[offset + 2] = this.#elements[2];
-    array[offset + 3] = this.#elements[3];
-
-    array[offset + 4] = this.#elements[4];
-    array[offset + 5] = this.#elements[5];
-    array[offset + 6] = this.#elements[6];
-    array[offset + 7] = this.#elements[7];
-
-    array[offset + 8] = this.#elements[8];
-    array[offset + 9] = this.#elements[9];
-    array[offset + 10] = this.#elements[10];
-    array[offset + 11] = this.#elements[11];
-
-    array[offset + 12] = this.#elements[12];
-    array[offset + 13] = this.#elements[13];
-    array[offset + 14] = this.#elements[14];
-    array[offset + 15] = this.#elements[15];
-
-    return array;
-  }
-
-  *[Symbol.iterator]() {
-    console.log("Matrix4: Symbol.iterator was called.");
-    yield* this.#elements;
   }
 
   /**
-   * Pretty-prints the matrix to the console.
-   *
-   * @param name The name of the matrix. If empty, only "Matrix 4x4" will be printed.
-   *             If provided, it will be prefixed to "Matrix 4x4".
-   * @param precision The number of decimal places to print. Default is 3.
-   * @param asColumnMajor If true, prints the matrix in column-major order. Default is false (row-major order).
-   *                      "(Column Major) or "(Row Major)" will be appended to the name.
+   * Erstellt eine neue 4x4 Matrix.
+   * Der Buffer muss mindestens Platz für 16 Float32 (64 Byte) ab dem Element-Offset bieten.
+   * Wenn kein Buffer übergeben wird, wird ein eigener Float32Array mit 16 Elementen erstellt.
+   * @param dataOrBuffer Entweder ein ArrayBuffer oder ein Float32Array, der die Matrixdaten enthält oder bereitstellt.
+   * @param elementOffset Der Offset (in Float32-Elementen) im Buffer, an dem die Matrixdaten beginnen. Standard ist 0.
+   * @param label Ein optionales Label für Fehler- und Diagnosezwecke.
+   * @param withIdentity Wenn true, wird die Matrix mit der Einheitsmatrix initialisiert. \
+   * Andernfalls werden die Werte aus dem übergebenen Buffer oder Array übernommen. \
+   * Standard ist false.
    */
-  prettyPrint(
-    name: string = "",
-    precision: number = 3,
-    asColumnMajor: boolean = false,
+  constructor(
+    dataOrBuffer: ArrayBuffer | Float32Array | Matrix4Tuple = new Float32Array(16),
+    elementOffset: number = 0,
+    label: string = "Matrix4",
+    withIdentity: boolean = false,
   ) {
-    const [
-      xx, yx, zx, wx,
-      xy, yy, zy, wy,
-      xz, yz, zz, wz,
-      xw, yw, zw, ww,
-    ] = this.#elements;
+    const requiredElements = 16;
 
-    const sxx = xx.toFixed(precision); const sxy = xy.toFixed(precision); const sxz = xz.toFixed(precision); const sxw = xw.toFixed(precision);
-    const syx = yx.toFixed(precision); const syy = yy.toFixed(precision); const syz = yz.toFixed(precision); const syw = yw.toFixed(precision);
-    const szx = zx.toFixed(precision); const szy = zy.toFixed(precision); const szz = zz.toFixed(precision); const szw = zw.toFixed(precision);
-    const swx = wx.toFixed(precision); const swy = wy.toFixed(precision); const swz = wz.toFixed(precision); const sww = ww.toFixed(precision);
+    if (elementOffset < 0) {
+      throw new Error("Element offset must be a non-negative integer.");
+    }
+    if (elementOffset % requiredElements !== 0) {
+      throw new Error("Element offset must be a multiple of 16 to ensure proper alignment for a 4x4 matrix.");
+    }
 
-    const maxLength = Math.max(
-      sxx.length, sxy.length, sxz.length, sxw.length,
-      syx.length, syy.length, syz.length, syw.length,
-      szx.length, szy.length, szz.length, szw.length,
-      swx.length, swy.length, swz.length, sww.length,
-    );
-
-    if (asColumnMajor) {
-      console.log(
-        `${name.trim().length ? `${name} ` : ""}Matrix 4x4 (Column Major):\n` +
-        `| ${sxx.padStart(maxLength)} ${syx.padStart(maxLength)} ${szx.padStart(maxLength)} ${swx.padStart(maxLength)} |\n` +
-        `| ${sxy.padStart(maxLength)} ${syy.padStart(maxLength)} ${szy.padStart(maxLength)} ${swy.padStart(maxLength)} |\n` +
-        `| ${sxz.padStart(maxLength)} ${syz.padStart(maxLength)} ${szz.padStart(maxLength)} ${swz.padStart(maxLength)} |\n` +
-        `| ${sxw.padStart(maxLength)} ${syw.padStart(maxLength)} ${szw.padStart(maxLength)} ${sww.padStart(maxLength)} |`,
-      );
+    if (dataOrBuffer instanceof Float32Array) {
+      if (dataOrBuffer.length < elementOffset + requiredElements) {
+        throw new Error("The provided Float32Array is too small to hold a 4x4 matrix at the specified offset.");
+      }
+      this.#data = (elementOffset === 0)
+        ? dataOrBuffer
+        : dataOrBuffer.subarray(elementOffset, elementOffset + requiredElements);
+    } else if (dataOrBuffer instanceof ArrayBuffer) {
+      if (dataOrBuffer.byteLength < (elementOffset + requiredElements) << 2) {
+        throw new Error("The provided ArrayBuffer is too small to hold a 4x4 matrix at the specified offset.");
+      }
+      this.#data = new Float32Array(dataOrBuffer, elementOffset << 2, requiredElements);
     } else {
-      console.log(
-        `${name.trim().length ? `${name} ` : ""}Matrix 4x4 (Row Major):\n` +
-        `| ${sxx.padStart(maxLength)} ${sxy.padStart(maxLength)} ${sxz.padStart(maxLength)} ${sxw.padStart(maxLength)} |\n` +
-        `| ${syx.padStart(maxLength)} ${syy.padStart(maxLength)} ${syz.padStart(maxLength)} ${syw.padStart(maxLength)} |\n` +
-        `| ${szx.padStart(maxLength)} ${szy.padStart(maxLength)} ${szz.padStart(maxLength)} ${szw.padStart(maxLength)} |\n` +
-        `| ${swx.padStart(maxLength)} ${swy.padStart(maxLength)} ${swz.padStart(maxLength)} ${sww.padStart(maxLength)} |`,
-      );
+      // Es wurde ein Tuple oder ein anderes Array-ähnliches Objekt übergeben. Versuche, es in ein Float32Array zu konvertieren.
+      if (!(Array.isArray(dataOrBuffer)) || dataOrBuffer.length !== requiredElements || !dataOrBuffer.every(n => typeof n === "number")) {
+        // eslint-disable-next-line max-len
+        throw new Error("Invalid data provided to Matrix4 constructor.\nExpected an ArrayBuffer, Float32Array, or an array-like object with 16 numeric elements.");
+      }
+      this.#data = new Float32Array(dataOrBuffer);
+    }
+    this.#label = label;
+
+    if (withIdentity) {
+      this.#data.set([
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
+      ]);
     }
   }
 
-  /* own functions */
-  // - internal vectors for re-use
-  static #v1 = new Vector3();
-  static #v2 = new Vector3();
-  static #v3 = new Vector3();
+  /**
+   * Tauscht den zu Grundeliegenden Buffer und den Element-Offset der Matrix aus.
+   * **Achtung:** Es werden keine alten Daten übernommen!
+   * @param dataOrBuffer Entweder ein ArrayBuffer oder ein Float32Array, der die Matrixdaten enthält oder bereitstellt.
+   * @param elementOffset Der Offset (in Float32-Elementen) im Buffer, an dem die Matrixdaten beginnen. Standard ist 0.
+   */
+  setBuffer(dataOrBuffer: ArrayBuffer | Float32Array, elementOffset: number = 0) {
+    const requiredElements = 16;
 
-  createCameraLookAtMatrix(eye: Vector3, target: Vector3, up: Vector3): Matrix4 {
-    Matrix4.#v1.subVectors(eye, target).normalize();
-    Matrix4.#v2.crossVectors(up, Matrix4.#v1).normalize();
-    Matrix4.#v3.crossVectors(Matrix4.#v1, Matrix4.#v2);
+    if (elementOffset < 0) {
+      throw new Error("Element offset must be a non-negative integer.");
+    }
+    if (elementOffset % requiredElements !== 0) {
+      throw new Error("Element offset must be a multiple of 16 to ensure proper alignment for a 4x4 matrix.");
+    }
 
-    this.#elements.set([
-      Matrix4.#v2.x, Matrix4.#v2.y, Matrix4.#v2.z, -Matrix4.#v2.dot(eye),
-      Matrix4.#v3.x, Matrix4.#v3.y, Matrix4.#v3.z, -Matrix4.#v3.dot(eye),
-      Matrix4.#v1.x, Matrix4.#v1.y, Matrix4.#v1.z, -Matrix4.#v1.dot(eye),
-      0, 0, 0, 1,
-    ]);
-
-    return this;
-  }
-
-  createPerspective(left: number, right: number, top: number, bottom: number, near: number, far: number): Matrix4 {
-    const x = 2 * near / (right - left);
-    const y = 2 * near / (top - bottom);
-
-    const a = (right + left) / (right - left);
-    const b = (top + bottom) / (top - bottom);
-
-    const c = -far / (far - near);
-    const d = (-far * near) / (far - near);
-
-    this.#elements.set([
-      x, 0, a, 0,
-      0, y, b, 0,
-      0, 0, c, d,
-      0, 0, -1, 0,
-    ]);
-
+    if (dataOrBuffer instanceof Float32Array) {
+      if (dataOrBuffer.length < elementOffset + requiredElements) {
+        throw new Error("The provided Float32Array is too small to hold a 4x4 matrix at the specified offset.");
+      }
+      this.#data = (elementOffset === 0)
+        ? dataOrBuffer
+        : dataOrBuffer.subarray(elementOffset, elementOffset + requiredElements);
+      return this;
+    }
+    if (dataOrBuffer.byteLength < (elementOffset + requiredElements) << 2) {
+      throw new Error("The provided ArrayBuffer is too small to hold a 4x4 matrix at the specified offset.");
+    }
+    this.#data = new Float32Array(dataOrBuffer, elementOffset << 2, requiredElements);
     return this;
   }
 }

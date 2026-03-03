@@ -1,7 +1,7 @@
-import BaseNode, { BaseNodeConfig } from "./baseNode";
-import ViewportNode from "./viewport";
+import BaseNode from "./baseNode";
+import ViewportNode, { ViewportNodeConfig } from "./viewport";
 
-export type CanvasViewportNodeConfig = BaseNodeConfig & {
+export type CanvasViewportNodeConfig = ViewportNodeConfig & {
   readonly type: "canvasViewport";
   canvas: HTMLCanvasElement;
 
