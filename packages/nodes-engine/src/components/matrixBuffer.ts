@@ -1,15 +1,16 @@
+import Component, { ComponentConfig } from "./component";
+
 import Matrix4 from "../math/matrix4";
 
 import type BaseNode from "../nodes/baseNode";
-import type ViewportNode from "../nodes/viewport";
+import ViewportNode from "../nodes/viewport";
 
 /**
  * Konfiguration für die MatrixBufferComponent.
  */
-export type MatrixBufferComponentConfig = {
-  /** Der Viewport zu dem der Buffer gehört */
-  viewport: ViewportNode;
+export type MatrixBufferComponentConfig = ComponentConfig & {
   /**
+   * @property elementCount:
    * Anzahl der Matrizen, die der Buffer mindestens bereitstellen soll.
    * Der Buffer wird immer ein Vielfaches von 16 Matrizen bereitstellen,
    * um den Speicher optimal auszurichten und Reallocations zu vermeiden.
@@ -52,9 +53,20 @@ export type MatrixConfig = {
  * - Es müssen die Statischen Validierungseigenschaften und Methoden
  *   implementiert werden - Siehe {@link BaseNode.addComponent}.
  */
-class MatrixBufferComponent {
-  #viewport: ViewportNode;
-  get viewport() { return this.#viewport; }
+class MatrixBufferComponent extends Component {
+  // --- Validierungseigenschaften und -methoden ---
+  static readonly allowMultiple = false;
+  static readonly isValidNodeType = (node: BaseNode) => {
+    // MatrixBufferComponent darf nur in ViewportNodes existieren
+    return node instanceof ViewportNode;
+  };
+
+  get viewport(): ViewportNode {
+    if (!(this.owner instanceof ViewportNode)) {
+      throw new Error("MatrixBufferComponent can only be used in ViewportNodes.");
+    }
+    return this.owner;
+  }
 
   readonly #bufferName: string;
 
@@ -69,14 +81,12 @@ class MatrixBufferComponent {
   #data: Float32Array;
   #buffer: GPUBuffer | null;
 
-  constructor({
-    viewport,
-    elementCount = 16,
-  }: MatrixBufferComponentConfig) {
-    this.#viewport = viewport;
+  constructor(config: MatrixBufferComponentConfig, owner: BaseNode) {
+    const { elementCount = 16, ...baseConfig } = config;
+    super(baseConfig, owner);
 
     // Die Id eines Nodes ist stabil und eindeutig.
-    this.#bufferName = `matrix-buffer (${viewport.id})`;
+    this.#bufferName = `matrix-buffer (${this.viewport.id})`;
 
     this.#elementCapacity = Math.ceil(elementCount / 16) * 16;
     this.#freeIndices = new Set(Array.from({ length: this.#elementCapacity }, (_, i) => i));
@@ -101,7 +111,7 @@ class MatrixBufferComponent {
 
       // Lösche den alten GPU Buffer. Er wird beim nächsten Update neu erstellt.
       if (this.#buffer) {
-        const { rendererApi } = this.#viewport;
+        const { rendererApi } = this.viewport;
         rendererApi.buffers.delete(this.#bufferName);
       }
 
@@ -117,6 +127,7 @@ class MatrixBufferComponent {
     const matrix = new Matrix4(this.#data, id * 16, name);
     this.#map.set(id, { matrix, node: owner, matrixName: name });
 
+    throw new Error("Not implemented");
   }
 
   /**

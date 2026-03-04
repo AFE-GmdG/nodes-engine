@@ -38,6 +38,10 @@ abstract class Application<
 
   abstract initializeViewport(): Promise<ViewportNode>;
 
+  protected onInitialized(): Promise<void> {
+    return Promise.resolve();
+  }
+
   /**
    * Startet die Applikation, indem die `nodeFactory` initialisiert,
    * der Viewport-Node erstellt und der gesamte Node-Baum initialisiert wird.
@@ -54,6 +58,8 @@ abstract class Application<
 
       // Initialisiere den gesamten Node-Baum
       await this.#rootNode.initializeTree();
+
+      await this.onInitialized();
     } catch (ex) {
       this.#handleError(unknownToError(ex));
     }

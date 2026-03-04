@@ -4,34 +4,32 @@ import ProcessMode from "../core/processMode";
 import type BaseNode from "../nodes/baseNode";
 
 export type ComponentConfig = {
-  readonly type: string; // Diskriminator für die Komponententypen
   processMode?: ProcessMode;
 };
 
 abstract class Component {
-  #node!: BaseNode;
-  get node(): BaseNode { return this.#node; }
+  #owner!: BaseNode;
+  get owner(): BaseNode { return this.#owner; }
 
   #processMode: ProcessMode;
   get processMode(): ProcessMode { return this.#processMode; }
   set processMode(value: ProcessMode) { this.#processMode = value; }
 
-  constructor({ processMode = ProcessMode.Inherit }: ComponentConfig, parent: BaseNode) {
+  constructor({ processMode = ProcessMode.Inherit }: ComponentConfig, owner: BaseNode) {
     this.#processMode = processMode;
 
     // Versuche, mich bei parent zu registrieren.
-    const success = parent.addComponent(this);
+    const success = owner.addComponent(this);
     if (!success) {
-      throw new Error(`Failed to add component of type ${this.constructor.name} to node ${parent.path}.`);
+      throw new Error(`Failed to add component of type ${this.constructor.name} to node ${owner.path}.`);
     }
 
-    this.#node = parent;
+    this.#owner = owner;
   }
 
   // --- Methoden für Node Lifecycle ---
 
-  initialize(node: BaseNode): Promise<void> {
-    this.#node = node;
+  initialize(): Promise<void> {
     return Promise.resolve();
   }
 
@@ -46,7 +44,7 @@ abstract class Component {
     this.onUpdate(frameContext);
   }
 
-  destroy(_node: BaseNode): void {
+  destroy(): void {
     throw new Error("Not implemented: Component.destroy");
   }
 }

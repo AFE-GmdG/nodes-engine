@@ -54,6 +54,12 @@ const app = new class extends Application<typeof appNodeMap> {
 
     return viewportNode;
   }
+
+  protected onInitialized(): Promise<void> {
+    console.log("App initialized. Node tree:");
+    this.rootNode.printTree();
+    return Promise.resolve();
+  }
 }();
 
 await app.run();

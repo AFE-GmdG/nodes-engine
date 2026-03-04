@@ -451,7 +451,7 @@ abstract class BaseNode {
 
     // ECS initialization
     for (const component of this.#components) {
-      await component.initialize(this);
+      await component.initialize();
     }
 
     // Initialisiere alle Kinder rekursiv
@@ -498,7 +498,7 @@ abstract class BaseNode {
 
     // ECS destruction
     for (const component of this.#components) {
-      component.destroy(this);
+      component.destroy();
     }
 
     // Zerstöre diesen Node
@@ -506,6 +506,53 @@ abstract class BaseNode {
   }
 
   // --- Hilfs- und Debugmethoden ---
+
+  /**
+   * Gibt die Hierarchie dieses Nodes und aller seiner Nachkommen auf der Konsole aus.
+   * @example
+   * ```
+   * Root
+   * ├── Child1
+   * │   ├── Grandchild1
+   * │   └── Grandchild2
+   * └── Child2
+   * ```
+   */
+  printTree(): void {
+    console.log(this.name);
+    this.#printChildren("");
+  }
+
+  /**
+   * Hilfsfunktion zum rekursiven Ausgeben der Kindknoten mit korrekter Formatierung.
+   * @param prefix Das Präfix für die aktuelle Einrückungsebene.
+   */
+  #printChildren(prefix: string): void {
+    const components = this.#components;
+    const hasChildren = this.#children.length > 0;
+    for (let i = 0; i < components.length; ++i) {
+      const component = components[i];
+      const isLast = i === components.length - 1 && !hasChildren;
+      const connector = isLast ? "└─ *" : "├── *";
+      console.log(prefix + connector + component.constructor.name);
+    }
+
+    const children = this.#children;
+    for (let i = 0; i < children.length; ++i) {
+      const child = children[i];
+      const isLast = i === children.length - 1;
+
+      // Bestimme die Linienzeichen für den aktuellen Knoten
+      const connector = isLast ? "└── " : "├── ";
+      // Bestimme das Präfix für die nächste Ebene
+      const extension = isLast ? "    " : "│   ";
+
+      // Gib den Kind-Node aus
+      console.log(prefix + connector + child.name);
+      // Rekursiv die Nachkommen ausgeben
+      child.#printChildren(prefix + extension);
+    }
+  }
 
   /**
    * Prüft, ob dieser Node ein Vorfahre des übergebenen Nodes ist.

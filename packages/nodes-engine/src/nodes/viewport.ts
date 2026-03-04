@@ -32,9 +32,8 @@ abstract class ViewportNode extends BaseNode {
     super(baseConfig, parent);
 
     this.#matrixBuffer = new MatrixBufferComponent({
-      viewport: this,
       elementCount: matrixBufferElementCount,
-    });
+    }, this);
   }
 
   protected async onInitialize(): Promise<void> {
