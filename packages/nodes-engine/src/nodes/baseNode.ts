@@ -1,7 +1,9 @@
 // import type ist hier nötig, um zirkuläre Abhängigkeiten zwischen BaseNode und RootNode zu vermeiden.
 import type RootNode from "./rootNode";
 
-import FrameContext from "../core/frameContext";
+import type Component from "../components/component";
+
+import type FrameContext from "../core/frameContext";
 import Guid from "../core/guid";
 
 export type BaseNodeConfig = {
@@ -47,6 +49,9 @@ abstract class BaseNode {
   #children: BaseNode[];
   get children(): BaseNode[] { return this.#children; }
 
+  #components: Component[];
+  get components(): Component[] { return this.#components; }
+
   get path(): string {
     return this.parent
       ? this.parent.path === "/"
@@ -77,6 +82,8 @@ abstract class BaseNode {
     this.#nameId = undefined;
     this.#parent = undefined;
     this.#children = [];
+
+    this.#components = [];
 
     if (parent) {
       parent.addChild(this);
@@ -343,6 +350,55 @@ abstract class BaseNode {
     return currentNode;
   }
 
+  // --- Methoden zum Verwalten von Komponenten ---
+
+  /**
+   * Fügt die übergebene Komponente zu diesem Node hinzu.
+   *
+   * Je nach Komponententyp kann es Einschränkungen geben,
+   * ob mehrere Instanzen derselben Komponente erlaubt sind.
+   *
+   * Dazu muss die Komponente eine statische Eigenschaft `allowMultiple`
+   * definieren und auf true setzen. Standardmäßig ist `allowMultiple`
+   * false, d.h. es ist nur eine Instanz einer Komponente pro Node erlaubt.
+   * @param component Die hinzuzufügende Komponente
+   */
+  addComponent(component: Component): boolean {
+    // Validierung:
+    // Komponentenklassen können optionale statische Eigenschaften und Funktionen definieren,
+    // um die Validierung der Komponente zu ermöglichen:
+    // - isValidNodeType(node: BaseNode): boolean
+    //   Diese Funktion bestimmt, ob eine Komponente auf einen bestimmten Node-Typ angewendet werden darf.
+    //   Ist die Funktion nicht definiert, wird die Komponente auf allen Node-Typen erlaubt.
+    // - allowMultiple: boolean
+    //   Diese Eigenschaft bestimmt, ob mehrere Instanzen einer Komponente auf demselben Node erlaubt sind.
+    //   Ist die Eigenschaft nicht definiert, ist standardmäßig nur eine Instanz pro Node erlaubt.
+    const componentType = component.constructor as typeof Component & {
+      isValidNodeType?: (node: BaseNode) => boolean;
+      allowMultiple?: boolean;
+    };
+
+    // Darf die Komponente auf diesem Node-Typ verwendet werden?
+    if (componentType.isValidNodeType?.(this) === false) {
+      console.warn(`Component of type ${componentType.name} cannot be added to node of type ${this.type}.\nSkipping addition of component.`);
+      return false; // Komponente ist für diesen Node-Typ nicht gültig, füge sie nicht hinzu
+    }
+
+    // Darf die Komponente mehrfach vorhanden sein?
+    if (!componentType.allowMultiple) {
+      const alreadyExists = this.#components.some(
+        (component) => component.constructor === componentType,
+      );
+      if (alreadyExists) {
+        console.warn(`Component of type ${componentType.name} already exists on node ${this.path}.\nSkipping addition of duplicate component.`);
+        return false; // Komponente dieses Typs ist bereits vorhanden, füge sie nicht hinzu
+      }
+    }
+
+    this.#components.push(component);
+    return true;
+  }
+
   // --- Methoden für Node Lifecycle ---
 
   /**
@@ -393,10 +449,10 @@ abstract class BaseNode {
     // Initialisiere diesen Node
     await this.onInitialize();
 
-    // TODO: ECS initialization
-    // for (const component of this.#components) {
-    //   await component.initialize(this);
-    // }
+    // ECS initialization
+    for (const component of this.#components) {
+      await component.initialize(this);
+    }
 
     // Initialisiere alle Kinder rekursiv
     for (const child of this.#children) {
@@ -440,10 +496,10 @@ abstract class BaseNode {
     // Damit werden alle Referenzen zu den Kindern entfernt, der GC kann sie nun aufräumen.
     this.#children.length = 0;
 
-    // TODO: ECS destruction
-    // for (const component of this.#components) {
-    //   component.destroy(this);
-    // }
+    // ECS destruction
+    for (const component of this.#components) {
+      component.destroy(this);
+    }
 
     // Zerstöre diesen Node
     this.onDestroy();

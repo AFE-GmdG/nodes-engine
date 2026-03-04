@@ -45,6 +45,12 @@ export type MatrixConfig = {
  * Vielfache von 4 Matrizen erlaubt sein. Eine Erhöhung auf ein Vielfaches von 16
  * Matrizen (1KB) verringert den Bedarf Reallocations.
  * Der Buffer wird also immer ein vielfaches von 1KB für je 16 Matrizen bereitstellen.
+ *
+ * TODO:
+ * - MatrixBufferComponent muss von Component erben.
+ *   Dazu muss der Constructor angepasst werden.
+ * - Es müssen die Statischen Validierungseigenschaften und Methoden
+ *   implementiert werden - Siehe {@link BaseNode.addComponent}.
  */
 class MatrixBufferComponent {
   #viewport: ViewportNode;
