@@ -1,6 +1,9 @@
 import BaseNode, { BaseNodeConfig } from "./baseNode";
 import ViewportNode from "./viewport";
 
+import TransformComponent from "../components/transform";
+
+import Basis from "../math/basis";
 import Matrix4 from "../math/matrix4";
 import Vector3 from "../math/vector3";
 
@@ -33,9 +36,7 @@ export type CameraNodeConfig = BaseNodeConfig & {
 class CameraNode extends BaseNode {
   #viewport?: ViewportNode;
 
-  #position: Vector3;
-  #target: Vector3;
-  #up: Vector3;
+  #transform: TransformComponent;
 
   #fovY: number;
   #near: number;
@@ -61,9 +62,18 @@ class CameraNode extends BaseNode {
 
     super(baseConfig, parent);
 
-    this.#position = position;
-    this.#target = target;
-    this.#up = up;
+    // Nutze Position, Target und Up Vector um eine Basis zu erstellen.
+    const cameraForward = target.clone().sub(position).normalize();
+    const cameraRight = cameraForward.clone().cross(up).normalize();
+    const cameraUp = cameraRight.clone().cross(cameraForward).normalize();
+
+    const basis = new Basis(cameraRight, cameraUp, cameraForward.multiplyScalar(-1));
+
+    this.#transform = new TransformComponent({
+      basis,
+      origin: position,
+    }, this);
+
     this.#fovY = fovY;
     this.#near = near;
     this.#far = far;

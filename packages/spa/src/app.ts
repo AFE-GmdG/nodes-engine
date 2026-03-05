@@ -1,11 +1,16 @@
 import Application from "@afegmdg/nodes-engine/core/application";
 
+import Basis from "@afegmdg/nodes-engine/math/basis";
 import Vector3 from "@afegmdg/nodes-engine/math/vector3";
 
 import BaseNode, { type BaseNodeConfig } from "@afegmdg/nodes-engine/nodes/baseNode";
 import ViewportNode from "@afegmdg/nodes-engine/nodes/viewport";
 
 console.clear();
+
+const b = new Basis();
+const vx = b.xAxis;
+console.log(vx.x);
 
 type PlayerNodeConfig = BaseNodeConfig & {
   health: number;

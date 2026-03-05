@@ -3,9 +3,60 @@
 import Matrix4 from "./matrix4";
 import Quaternion from "./quaternion";
 
-export type Vector3Tuple = [number, number, number];
+/**
+ * Ein Tuple, das die drei Komponenten eines 3D-Vektors repräsentiert: [x, y, z].
+ */
+export type Vector3Tuple = [
+  x: number,
+  y: number,
+  z: number,
+];
 
-class Vector3 {
+export interface ReadonlyVector3 {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+
+  getComponent(index: 0 | 1 | 2): number;
+  clone(): Vector3;
+  dot(v: ReadonlyVector3): number;
+  lengthSq(): number;
+  length(): number;
+  equals(v: ReadonlyVector3): boolean;
+  toArray(array?: number[], offset?: number): number[];
+
+  [Symbol.iterator](): IterableIterator<number>;
+}
+
+export function isVector3Tuple(value: any): value is Vector3Tuple {
+  return (
+    Array.isArray(value)
+    && value.length === 3
+    && typeof value[0] === "number"
+    && typeof value[1] === "number"
+    && typeof value[2] === "number"
+  );
+}
+
+export function isReadonlyVector3(value: any): value is ReadonlyVector3 {
+  return (value instanceof Vector3 || (
+    value
+    && typeof value === "object"
+    && typeof value.x === "number"
+    && typeof value.y === "number"
+    && typeof value.z === "number"
+    && typeof value.getComponent === "function"
+    && typeof value.clone === "function"
+    && typeof value.dot === "function"
+    && typeof value.lengthSq === "function"
+    && typeof value.length === "function"
+    && typeof value.equals === "function"
+    && typeof value.toArray === "function"
+    && typeof value[Symbol.iterator] === "function"
+  ));
+}
+
+class Vector3 implements ReadonlyVector3 {
   #elements: Float32Array;
 
   get x() { return this.#elements[0]; }

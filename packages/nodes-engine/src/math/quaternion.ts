@@ -3,7 +3,59 @@
 import Matrix4 from "./matrix4";
 import Vector3 from "./vector3";
 
-export type QuaternionTuple = [number, number, number, number];
+export type QuaternionTuple = [
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+];
+
+export interface ReadonlyQuaternion {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly w: number;
+
+  getComponent(index: 0 | 1 | 2 | 3): number;
+  clone(): Quaternion;
+  dot(v: ReadonlyQuaternion): number;
+  lengthSq(): number;
+  length(): number;
+  equals(q: ReadonlyQuaternion): boolean;
+  toArray(array?: number[], offset?: number): number[];
+
+  [Symbol.iterator](): IterableIterator<number>;
+}
+
+export function isQuaternionTuple(value: any): value is QuaternionTuple {
+  return (
+    Array.isArray(value)
+    && value.length === 4
+    && typeof value[0] === "number"
+    && typeof value[1] === "number"
+    && typeof value[2] === "number"
+    && typeof value[3] === "number"
+  );
+}
+
+export function isReadonlyQuaternion(value: any): value is ReadonlyQuaternion {
+  return (value instanceof Quaternion || (
+    value
+    && typeof value === "object"
+    && typeof value.x === "number"
+    && typeof value.y === "number"
+    && typeof value.z === "number"
+    && typeof value.w === "number"
+    && typeof value.getComponent === "function"
+    && typeof value.clone === "function"
+    && typeof value.dot === "function"
+    && typeof value.lengthSq === "function"
+    && typeof value.length === "function"
+    && typeof value.equals === "function"
+    && typeof value.toArray === "function"
+    && typeof value[Symbol.iterator] === "function"
+  ));
+}
 
 class Quaternion {
   elements: Float32Array;

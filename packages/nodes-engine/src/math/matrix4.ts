@@ -107,7 +107,7 @@ export type Matrix4Tuple = [
  */
 class Matrix4 {
   /**
-   * Der Float32Array, der die Elemente der Matrix enthält.
+   * Das Float32Array, der die Elemente der Matrix enthält.
    * Kann auch extern und mit Offset übergeben werden, um mehrere
    * Matrizen in einem großen Speicherbereich zu verwalten.
    */
