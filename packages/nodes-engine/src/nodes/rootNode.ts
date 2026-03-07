@@ -1,6 +1,7 @@
 import BaseNode from "./baseNode";
 
 import { ROOT_NODE_GUID } from "../core/guids";
+import ProcessMode from "../core/processMode";
 
 import RendererApi from "../renderer/api";
 
@@ -21,9 +22,17 @@ class RootNode extends BaseNode {
 
   get path() { return "/"; } // Der Pfad des RootNode ist immer "/"
 
+  #paused: boolean;
+  get paused() { return this.#paused; }
+  set paused(value: boolean) { this.#paused = value; }
+
+  // RootNode wird immer aktualisiert
+  get effectiveProcessMode() { return ProcessMode.Always; }
+
   constructor() {
     super({ type: "ROOT_NODE", id: ROOT_NODE_GUID, name: "ROOT_NODE" });
     this.#rendererApi = new RendererApi();
+    this.#paused = false;
   }
 
   protected async onInitialize() {

@@ -5,11 +5,13 @@ import type Component from "../components/component";
 
 import type FrameContext from "../core/frameContext";
 import Guid from "../core/guid";
+import ProcessMode from "../core/processMode";
 
 export type BaseNodeConfig = {
   readonly type: string; // Diskriminator für die Node-Klasse
   id?: Guid;
   name?: string;
+  processMode?: ProcessMode;
 };
 
 /**
@@ -43,6 +45,18 @@ abstract class BaseNode {
     return this.#baseName;
   }
 
+  #processMode: ProcessMode;
+  get processMode(): ProcessMode { return this.#processMode; }
+  get effectiveProcessMode(): ProcessMode {
+    if (this.#processMode !== ProcessMode.Inherit) {
+      return this.#processMode;
+    }
+    if (!this.parent) {
+      return ProcessMode.Always;
+    }
+    return this.parent.effectiveProcessMode;
+  }
+
   #parent?: BaseNode;
   get parent(): BaseNode | undefined { return this.#parent; }
 
@@ -74,12 +88,13 @@ abstract class BaseNode {
     return undefined;
   }
 
-  constructor({ type, id, name }: BaseNodeConfig, parent?: BaseNode) {
+  constructor({ type, id, name, processMode }: BaseNodeConfig, parent?: BaseNode) {
     this.#type = type;
 
     this.#id = id ?? new Guid();
     this.#baseName = name ?? "Node";
     this.#nameId = undefined;
+    this.#processMode = processMode ?? ProcessMode.Inherit;
     this.#parent = undefined;
     this.#children = [];
 
@@ -469,7 +484,51 @@ abstract class BaseNode {
    * @returns false, wenn die Game-Loop beendet werden soll, andernfalls true.
    */
   updateTree(frameContext: Readonly<FrameContext>): boolean {
-    const shouldContinue = this.onUpdate(frameContext);
+    // Teste den Prozessmodus dieses Nodes, um zu entscheiden, ob er aktualisiert werden soll.
+    if (this.#processMode === ProcessMode.Disabled) {
+      // Wenn dieser Node deaktiviert ist, überspringe ihn, aber beende die Game-Loop nicht.
+      return true;
+    }
+
+    let shouldContinue = true;
+
+    // EffektivProcessMode kann nicht Disabled sein, da die UpdateTree-Methode
+    // des ElternNodes den Update-Prozess nicht weitergeleitet hätte.
+    switch (this.effectiveProcessMode) {
+      case ProcessMode.Always:
+        // Aktualisiere die Komponenten
+        for (const component of this.#components) {
+          component.update(frameContext);
+        }
+        shouldContinue = this.onUpdate(frameContext);
+        break;
+      case ProcessMode.Pausable:
+        // Nicht verbundener Node (kein Root) wird als Pausiert betrachtet
+        if (this.root?.paused ?? true) {
+          break;
+        }
+        // Aktualisiere die Komponenten
+        for (const component of this.#components) {
+          component.update(frameContext);
+        }
+        shouldContinue = this.onUpdate(frameContext);
+        break;
+      case ProcessMode.WhenPaused:
+        // Nicht verbundener Node (kein Root) wird als Pausiert betrachtet
+        if (!(this.root?.paused ?? true)) {
+          break;
+        }
+        // Aktualisiere die Komponenten
+        for (const component of this.#components) {
+          component.update(frameContext);
+        }
+        shouldContinue = this.onUpdate(frameContext);
+        break;
+      case ProcessMode.Inherit:
+      case ProcessMode.Disabled:
+        // Diese Fälle sollten hier nicht auftreten, da sie von den ElternNodes bereits gefiltert wurden.
+        throw new Error(`Invalid process mode ${this.effectiveProcessMode} for node ${this.path}.`);
+    }
 
     // Alle Kinder updaten – auch wenn eines false zurückgibt
     let childrenContinue = true;

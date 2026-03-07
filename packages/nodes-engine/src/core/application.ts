@@ -151,6 +151,14 @@ abstract class Application<
     }
   }
 
+  pause() {
+    this.#rootNode.paused = true;
+  }
+
+  resume() {
+    this.#rootNode.paused = false;
+  }
+
   #handleError(error: Error) {
     // Erzeuge einen Dialog.
     // Hänge die Fehlermeldung an und biete die Möglichkeit, die Seite neu zu laden.

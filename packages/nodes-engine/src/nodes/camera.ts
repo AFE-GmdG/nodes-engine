@@ -36,6 +36,11 @@ export type CameraNodeConfig = BaseNodeConfig & {
 class CameraNode extends BaseNode {
   #viewport?: ViewportNode;
 
+  // Die Transform-Komponente legt die lokale Position, Rotation und Skalierung fest.
+  // Im Fall der Kamera entspricht dies der (lokalen) View-Matrix, obwohl die Matrix selbst
+  // erst noch errechnet werden muss.
+  // Für die reine View-Matrix müssen die lokalen Transformationen erst auf die
+  // Welttransformationen umgerechnet werden.
   #transform: TransformComponent;
 
   #fovY: number;
@@ -81,14 +86,14 @@ class CameraNode extends BaseNode {
     this.#viewMatrix = new Matrix4();
     this.#projectionMatrix = new Matrix4();
 
-    this.#viewMatrix.createCameraLookAtMatrix(this.#position, this.#target, this.#up);
-
-    // TODO
-    const left = -1;
-    const right = 1;
-    const top = 1;
-    const bottom = -1;
-    this.#projectionMatrix.createPerspective(left, right, top, bottom, this.#near, this.#far);
+    this.#viewMatrix.createCameraLookAtMatrix(position, target, up);
+    // Kann man den Viewport hier schon finden?
+    // Aber selbst wenn, ist er vermutlich noch nicht initialisiert und kennt somit seine Größe noch nicht.
+    const potentialViewport = this.findAncestorByTypes("canvasViewport") as ViewportNode | undefined;
+    const width = potentialViewport?.width ?? 800;
+    const height = potentialViewport?.height ?? 450;
+    const aspectRatio = width / height;
+    this.#projectionMatrix.createPerspectiveFoV(this.#fovY, aspectRatio, this.#near, this.#far);
   }
 
   protected async onInitialize(): Promise<void> {
