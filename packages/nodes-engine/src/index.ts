@@ -1,7 +1,6 @@
 // --- Core ---
 export {
   default as Application,
-  type EngineInitialization,
 } from "./core/application";
 export {
   default as Guid,

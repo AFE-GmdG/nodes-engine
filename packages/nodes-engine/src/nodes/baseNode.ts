@@ -27,7 +27,7 @@ export type BaseNodeConfig = {
  * Anschließend muss die `initializeTree`-Methode aufgerufen werden, um den Node
  * und alle seine Nachkommen zu initialisieren.
  */
-abstract class BaseNode {
+class BaseNode {
   readonly #type: string;
   get type(): string { return this.#type; }
 
@@ -118,14 +118,20 @@ abstract class BaseNode {
    * - Node (3)
    * - ...
    *
-   * Namen dürfen die folgenden Zeichen nicht enthalten:
+   * Namen dürfen mit folgenden Zeichen nicht beginnen:
    * - . (Punkt): Wird für relative Pfade in der Node-Hierarchie verwendet. (./ und ../)
+   * Namen dürfen die folgenden Zeichen nicht enthalten:
    * - / (Slash): Wird als Trenner für Pfadsegmente und als Root-Indicator (/) in der Node-Hierarchie verwendet.
+   * - * (Sternchen): Wird für Wildcards in Pfaden verwendet.
+   * - ? (Fragezeichen): Wird für Wildcards in Pfaden verwendet.
    * @param name Der Basisname für diesen Node.
    */
   setName(name: string) {
-    if (name.includes(".") || name.includes("/")) {
-      throw new Error("Node names cannot contain '.' or '/' characters.");
+    if (name.startsWith(".")) {
+      throw new Error("Node names cannot start with '.' characters.");
+    }
+    if (name.includes("/") || name.includes("*") || name.includes("?")) {
+      throw new Error("Node names cannot contain '/', '*', or '?' characters.");
     }
 
     this.#baseName = name;
@@ -286,6 +292,21 @@ abstract class BaseNode {
   }
 
   /**
+   * Sucht in den Vorfahren dieses Nodes nach einem Node, der eine Komponente des übergebenen Typs besitzt, und gibt diesen zurück.
+   * @param componentClass Die Klasse der gesuchten Komponente. Es wird der erste Vorfahre zurückgegeben, der eine Komponente dieses Typs besitzt.
+   */
+  findAncestorByComponent(componentClass: typeof Component) {
+    let current = this.#parent;
+    while (current) {
+      if (current.components.some(component => component instanceof componentClass)) {
+        return current;
+      }
+      current = current.#parent;
+    }
+    return undefined;
+  }
+
+  /**
    * Sucht in den direkten Kindern dieses Nodes nach allen Nodes mit dem übergebenen Typ.
    * @param type Der gesuchte Node-Typ
    * @param recursive Wenn true, werden auch alle Nachkommen durchsucht
@@ -414,6 +435,10 @@ abstract class BaseNode {
     return true;
   }
 
+  getComponent<T extends Component>(componentClass: new (...args: any[]) => T): T | undefined {
+    return this.#components.find(component => component instanceof componentClass) as T | undefined;
+  }
+
   // --- Methoden für Node Lifecycle ---
 
   /**
@@ -424,6 +449,7 @@ abstract class BaseNode {
    * bevor die Komponenten und Kinder initialisiert werden.
    */
   protected onInitialize(): Promise<void> {
+    console.log(`Initializing node ${this.path}.`);
     return Promise.resolve();
   }
 
@@ -437,6 +463,7 @@ abstract class BaseNode {
    * Eltern sind zu diesem Zeitpunkt noch nicht garantiert initialisiert.
    */
   protected onInitialized(): Promise<void> {
+    console.log(`Node ${this.path} initialized.`);
     return Promise.resolve();
   }
 

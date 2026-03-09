@@ -43,14 +43,20 @@ const app = new class extends Application<typeof appNodeMap> {
 
     this.nodeFactory({
       type: "player",
+      name: "Dummy-Node: Player",
       health: 100,
+    }, viewportNode);
+
+    const cameraRig = this.nodeFactory({
+      type: "node",
+      name: "Camera-Rig",
     }, viewportNode);
 
     this.nodeFactory({
       type: "3D camera",
       name: "MainCamera",
       position: new Vector3(1.5, 0, 15),
-    }, viewportNode);
+    }, cameraRig);
 
     return viewportNode;
   }

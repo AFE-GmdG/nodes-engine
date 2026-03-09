@@ -30,6 +30,14 @@ export type MatrixConfig = {
 };
 
 /**
+ * Information zu einer einzelnen Matrix im Buffer, inklusive der Matrix selbst.
+ */
+export type MatrixInfo = Prettify<MatrixConfig & {
+  /** Die Matrix selbst. */
+  matrix: Matrix4;
+}>;
+
+/**
  * Die MatrixBufferComponent ist eine obligatorische Komponente eines ViewportNodes
  * und kann von diesem auch nicht entfernt werden.
  *
@@ -77,7 +85,7 @@ class MatrixBufferComponent extends Component {
 
   #freeIndices: Set<number>;
 
-  #map: Map<number, { matrix: Matrix4, node: BaseNode; matrixName: string }>;
+  #map: Map<number, MatrixInfo>;
   #data: Float32Array;
   #buffer: GPUBuffer | null;
 
@@ -125,9 +133,9 @@ class MatrixBufferComponent extends Component {
     this.#freeIndices.delete(id);
 
     const matrix = new Matrix4(this.#data, id * 16, name);
-    this.#map.set(id, { matrix, node: owner, matrixName: name });
+    this.#map.set(id, { matrix, owner, name });
 
-    throw new Error("Not implemented");
+    return id;
   }
 
   /**
@@ -143,7 +151,7 @@ class MatrixBufferComponent extends Component {
    */
   removeMatrix(owner: BaseNode, id: number): boolean {
     const matrixInfo = this.#map.get(id);
-    if (!matrixInfo || matrixInfo.node !== owner) {
+    if (!matrixInfo || matrixInfo.owner !== owner) {
       // Ungültige Id oder Owner stimmt nicht überein
       console.warn(`Failed to remove matrix with id ${id}: Invalid id or owner mismatch.`);
       return false;
@@ -166,14 +174,22 @@ class MatrixBufferComponent extends Component {
    */
   renameMatrix(owner: BaseNode, id: number, newName: string): boolean {
     const matrixInfo = this.#map.get(id);
-    if (!matrixInfo || matrixInfo.node !== owner) {
+    if (!matrixInfo || matrixInfo.owner !== owner) {
       // Ungültige Id oder Owner stimmt nicht überein
       console.warn(`Failed to rename matrix with id ${id}: Invalid id or owner mismatch.`);
       return false;
     }
 
-    matrixInfo.matrixName = newName;
+    matrixInfo.name = newName;
     return true;
+  }
+
+  /**
+   * Gibt die MatrixInfo für die gegebene Id zurück. Gibt undefined zurück, wenn die Id ungültig ist oder frei ist.
+   * @param id Die Id der Matrix.
+   */
+  getById(id: number): MatrixInfo | undefined {
+    return this.#map.get(id);
   }
 }
 

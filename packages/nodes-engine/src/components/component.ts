@@ -15,8 +15,14 @@ abstract class Component {
   get processMode(): ProcessMode { return this.#processMode; }
   set processMode(value: ProcessMode) { this.#processMode = value; }
 
+  #dirty: boolean;
+  get dirty(): boolean { return this.#dirty; }
+
   constructor({ processMode = ProcessMode.Inherit }: ComponentConfig, owner: BaseNode) {
     this.#processMode = processMode;
+
+    // Alle Komponente starten als "dirty".
+    this.#dirty = true;
 
     // Versuche, mich bei parent zu registrieren.
     const success = owner.addComponent(this);
@@ -31,6 +37,14 @@ abstract class Component {
 
   initialize(): Promise<void> {
     return Promise.resolve();
+  }
+
+  // --- Dirty-Flag-Management ---
+  markDirty(): void {
+  }
+
+  clearDirty(): void {
+    this.#dirty = false;
   }
 
   protected onUpdate(_frameContext: Readonly<FrameContext>): void {

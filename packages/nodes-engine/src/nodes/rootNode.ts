@@ -37,6 +37,7 @@ class RootNode extends BaseNode {
 
   protected async onInitialize() {
     await this.#rendererApi.initialize();
+    await super.onInitialize();
   }
 }
 

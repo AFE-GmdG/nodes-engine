@@ -1,5 +1,6 @@
+import { type ReadonlyBasis } from "./basis";
 import Quaternion from "./quaternion";
-import Vector3 from "./vector3";
+import Vector3, { type ReadonlyVector3 } from "./vector3";
 
 /**
  * Ein Tuple, das die 16 Elemente einer 4x4-Matrix in row-major Reihenfolge repräsentiert.
@@ -192,7 +193,9 @@ class Matrix4 {
         throw new Error("The provided Float32Array is too small to hold a 4x4 matrix at the specified offset.");
       }
       this.#data = (elementOffset === 0)
-        ? dataOrBuffer
+        ? dataOrBuffer.length === requiredElements
+          ? dataOrBuffer
+          : dataOrBuffer.subarray(0, requiredElements)
         : dataOrBuffer.subarray(elementOffset, elementOffset + requiredElements);
     } else if (dataOrBuffer instanceof ArrayBuffer) {
       if (dataOrBuffer.byteLength < (elementOffset + requiredElements) << 2) {
@@ -554,6 +557,17 @@ class Matrix4 {
       0, f, 0, 0,
       0, 0, far * rangeInv, -1,
       0, 0, near * far * rangeInv, 0,
+    ]);
+
+    return this;
+  }
+
+  createFromBasisAndOrigin(basis: ReadonlyBasis, origin: ReadonlyVector3): Matrix4 {
+    this.#data.set([
+      basis.xAxis.x, basis.yAxis.x, basis.zAxis.x, 0,
+      basis.xAxis.y, basis.yAxis.y, basis.zAxis.y, 0,
+      basis.xAxis.z, basis.yAxis.z, basis.zAxis.z, 0,
+      origin.x, origin.y, origin.z, 1,
     ]);
 
     return this;
